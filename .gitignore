@@ -1,0 +1,30 @@
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+*/build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Xcode / iOS
+iosApp/build_dd/
+iosApp/*.xcworkspace/
+iosApp/Pods/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# QA artefacts from manual device testing (not source)
+shot*.png
+wd*.xml
+wdy.xml
+emulator_debug.log
+logcat_pick.txt
+
+# OS
+.DS_Store
+Thumbs.db
