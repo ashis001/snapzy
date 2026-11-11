@@ -145,3 +145,33 @@ encoding.
 4. Compare against the reference images in this folder.
 
 `scripts/verify-android.sh` wraps steps 1–3 for the launch → home path.
+
+
+## Home screen
+
+The springboard follows the reference app's layout, on Movexa's own gradient:
+
+```
+Movexa                                  ♔  ⚙
+        (the open space holds RECENT — the saved drafts)
+
+CREATE NEW
+┌──────────────────────────────────────────────┐
+│   ( video )      ( photo )      ( collage )  │
+└──────────────────────────────────────────────┘
+
+WHAT'S NEW                              ALL ›
+┌────────┐ ┌────────┐ ┌────────┐
+│Templates│ │AI Tools│ │ Store  │
+└────────┘ └────────┘ └────────┘
+```
+
+- The wallpaper is Movexa's aqua → blue → violet gradient
+  (`MovexaColors.homeGradient`); the reference app uses a warm one.
+- The create buttons sit on a frosted card; the reference app uses a white one.
+- The crown opens the Pro sheet and the gear opens Settings — both are
+  server-backed, so both open the shared Coming Soon sheet.
+- `ALL ›` opens Discover, which is server-backed too.
+- There is no bottom navigation; the reference app has none either.
+- The saved drafts fill the open space above `CREATE NEW` under a `RECENT`
+  label, which is where the reference app puts its promotional carousel.

@@ -305,6 +305,13 @@ the problem was not legibility but *character*: an electric cyan and a
 Material-purple read as a template. The new palette is desaturated, warmer in
 its neutrals, and uses the accent far more sparingly, so the chrome recedes.
 
+### The home screen
+
+The springboard is the one bright surface in the app: an aqua → blue → violet
+gradient (`MovezaColors.homeGradient`) with a frosted card for the create
+buttons, so the app opens colourful and then drops into the dark editor the
+way the reference app does. Everything on it is white on the gradient.
+
 ### Icons
 
 `EditorIcons.kt` — 47 hand-drawn line icons drawn with Compose primitives

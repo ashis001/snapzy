@@ -1,18 +1,17 @@
 package com.movexa.app.feature.home
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,76 +20,61 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import kotlin.math.min
-import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.movexa.app.core.comingsoon.GatedFeature
-import com.movexa.app.core.designsystem.CircleIconButton
-import com.movexa.app.core.designsystem.ComingSoonTile
-import com.movexa.app.core.designsystem.GradientFab
+import com.movexa.app.core.designsystem.ICON_GRID
 import com.movexa.app.core.designsystem.MovexaColors
-import com.movexa.app.core.designsystem.MovexaPrimaryButton
-import com.movexa.app.core.designsystem.MovexaSecondaryButton
 import com.movexa.app.core.designsystem.MovexaShapes
 import com.movexa.app.core.designsystem.MovexaType
-import com.movexa.app.core.designsystem.StatusChip
-import com.movexa.app.core.designsystem.ICON_GRID
 import com.movexa.app.core.designsystem.ToolIconView
 import com.movexa.app.core.editing.EditProject
 import com.movexa.app.core.editing.EditorTool
-import com.movexa.app.core.media.loadThumbnail
 import com.movexa.app.core.storage.DraftSummary
 import com.movexa.app.core.storage.createDraftStore
-import com.movexa.app.core.storage.currentTimeMillis
+import com.movexa.app.core.media.loadThumbnail
 import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.min
 
 /**
- * The Movexa springboard.
+ * The springboard.
  *
- * Mirrors InShot's home layout: a wordmark header, a "Projects" area, a grid of
- * large create tiles and a rounded bottom bar. Everything that needs a backend
- * (templates, AI tools, the store, Discover, Account) opens the shared Coming
- * Soon sheet through [onGatedFeature].
+ * The layout follows the reference app: a colourful wallpaper, the wordmark
+ * with the Pro crown and the settings gear in the header, the recent drafts in
+ * the open space, `CREATE NEW` with the three create buttons on a frosted
+ * card, and a `WHAT'S NEW` row of the server-backed features.
  *
- * The "Projects" area lists the saved drafts; tapping one hands the edit back
- * through [onOpenDraft] so it can be reopened in the editor.
+ * There is no bottom navigation — the crown and the gear are the only other
+ * places to go, and both of them open the shared Coming Soon sheet because
+ * they are backed by a server.
  */
 @Composable
 fun HomeScreen(
@@ -100,8 +84,6 @@ fun HomeScreen(
     onGatedFeature: (GatedFeature) -> Unit,
     onOpenDraft: (EditProject) -> Unit = {},
 ) {
-    var showCreateSheet by remember { mutableStateOf(false) }
-
     val draftStore = remember { createDraftStore() }
     val scope = rememberCoroutineScope()
     var drafts by remember { mutableStateOf<List<DraftSummary>>(emptyList()) }
@@ -113,115 +95,67 @@ fun HomeScreen(
         onPauseOrDispose { }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MovexaColors.bgBase)
-            .statusBarsPadding(),
+            .background(
+                Brush.linearGradient(
+                    colors = MovexaColors.homeGradient,
+                    start = Offset(0f, 0f),
+                    end = Offset(1400f, 2200f),
+                ),
+            ),
     ) {
-        HomeHeader(
-            onOpenPro = { onGatedFeature(GatedFeature.GO_PRO) },
-            onOpenSettings = { onGatedFeature(GatedFeature.ACCOUNT) },
-        )
-
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+                .fillMaxSize()
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState()),
         ) {
-            Spacer(Modifier.height(4.dp))
+            HomeHeader(
+                onOpenPro = { onGatedFeature(GatedFeature.GO_PRO) },
+                onOpenSettings = { onGatedFeature(GatedFeature.SETTINGS) },
+            )
 
-            SectionHeader(title = "Projects", subtitle = "Pick up where you left off")
-            if (drafts.isEmpty()) {
-                ProjectsSection(
-                    onCreateVideo = onCreateVideo,
-                    onCreatePhoto = onCreatePhoto,
-                )
-            } else {
+            Spacer(Modifier.weight(1f))
+
+            if (drafts.isNotEmpty()) {
+                SectionLabel(text = "RECENT")
+                Spacer(Modifier.height(10.dp))
                 DraftRow(
                     drafts = drafts,
                     onOpen = { id ->
-                        scope.launch {
-                            val project = draftStore.load(id)
-                            if (project != null) onOpenDraft(project)
-                        }
+                        scope.launch { draftStore.load(id)?.let(onOpenDraft) }
                     },
                 )
+                Spacer(Modifier.height(28.dp))
             }
 
-            Spacer(Modifier.height(22.dp))
-
-            SectionHeader(title = "Create new", subtitle = "Start something new")
+            SectionLabel(text = "CREATE NEW")
+            Spacer(Modifier.height(12.dp))
             CreateCard(
                 onCreateVideo = onCreateVideo,
                 onCreatePhoto = onCreatePhoto,
                 onCreateCollage = onCreateCollage,
             )
 
-            Spacer(Modifier.height(14.dp))
-
-            SecondaryActions(
-                onTemplates = { onGatedFeature(GatedFeature.TEMPLATES) },
-                onAiTools = { onGatedFeature(GatedFeature.AI_ENHANCE) },
-                onStore = { onGatedFeature(GatedFeature.MARKETPLACE) },
+            Spacer(Modifier.height(22.dp))
+            SectionLabelRow(
+                title = "WHAT'S NEW",
+                action = "ALL ›",
+                onAction = { onGatedFeature(GatedFeature.DISCOVER) },
             )
+            Spacer(Modifier.height(12.dp))
+            FeatureRow(onGatedFeature = onGatedFeature)
 
             Spacer(Modifier.height(22.dp))
-
-            SectionHeader(title = "On the roadmap", subtitle = "Coming to Movexa")
-            ComingSoonTile(
-                title = "AI Cut",
-                subtitle = "Remove silences and filler words",
-                modifier = Modifier.padding(bottom = 8.dp),
-                onClick = { onGatedFeature(GatedFeature.AI_CUT) },
-            )
-            ComingSoonTile(
-                title = "Auto Captions",
-                subtitle = "Speech to text, timed for you",
-                modifier = Modifier.padding(bottom = 8.dp),
-                onClick = { onGatedFeature(GatedFeature.AUTO_CAPTIONS) },
-            )
-            ComingSoonTile(
-                title = "AI Voiceover",
-                subtitle = "Turn text into narration",
-                onClick = { onGatedFeature(GatedFeature.VOICEOVER) },
-            )
-
-            Spacer(Modifier.height(24.dp))
         }
-
-        HomeBottomBar(
-            onDiscover = { onGatedFeature(GatedFeature.DISCOVER) },
-            onSettings = { onGatedFeature(GatedFeature.SETTINGS) },
-            onCreate = { showCreateSheet = true },
-        )
-    }
-
-    if (showCreateSheet) {
-        CreateSheet(
-            onDismiss = { showCreateSheet = false },
-            onNewVideo = {
-                showCreateSheet = false
-                onCreateVideo()
-            },
-            onNewPhoto = {
-                showCreateSheet = false
-                onCreatePhoto()
-            },
-            onCollage = {
-                showCreateSheet = false
-                onCreateCollage()
-            },
-            onTemplates = {
-                showCreateSheet = false
-                onGatedFeature(GatedFeature.TEMPLATES)
-            },
-        )
     }
 }
 
-/** Wordmark, PRO tag and the settings affordance. */
+/* ---------------------------------------------------------------- header -- */
+
+/** The wordmark, the Pro crown and the settings gear. */
 @Composable
 private fun HomeHeader(
     onOpenPro: () -> Unit,
@@ -230,256 +164,159 @@ private fun HomeHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "Movexa",
-            style = MovexaType.display.copy(fontWeight = FontWeight.Bold),
-            color = MovexaColors.brandPrimary,
+            style = MovexaType.display,
+            color = Color.White,
+        )
+        Spacer(Modifier.weight(1f))
+        HeaderIconButton(
+            icon = HeaderIcon.CROWN,
+            contentDescription = "Movexa Pro",
+            onClick = onOpenPro,
         )
         Spacer(Modifier.width(8.dp))
-        Box(modifier = Modifier.clickable(onClick = onOpenPro)) {
-            StatusChip(text = "PRO")
-        }
-        Spacer(Modifier.weight(1f))
-        CircleIconButton(
+        HeaderIconButton(
+            icon = HeaderIcon.SETTINGS,
             contentDescription = "Settings",
             onClick = onOpenSettings,
-            modifier = Modifier.size(38.dp),
-        ) {
-            NavIconCanvas(icon = NavIcon.SETTINGS, tint = MovexaColors.textSecondary, size = 22.dp)
-        }
-    }
-}
-
-/** Small caps section title with a supporting line. */
-@Composable
-private fun SectionHeader(title: String, subtitle: String) {
-    Column(modifier = Modifier.padding(bottom = 10.dp)) {
-        Text(
-            text = title,
-            style = MovexaType.title,
-            color = MovexaColors.textPrimary,
-        )
-        Text(
-            text = subtitle,
-            style = MovexaType.label,
-            color = MovexaColors.textSecondary,
         )
     }
 }
 
-/**
- * The recent-projects area, shown when nothing has been saved yet.
- *
- * Instead of fake cards this renders a designed empty state that points at
- * the create actions.
- */
+private enum class HeaderIcon { CROWN, SETTINGS }
+
+/** A round, frosted button holding one of the header glyphs. */
 @Composable
-private fun ProjectsSection(
-    onCreateVideo: () -> Unit,
-    onCreatePhoto: () -> Unit,
+private fun HeaderIconButton(
+    icon: HeaderIcon,
+    contentDescription: String,
+    onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(MovexaShapes.medium)
-            .background(MovexaColors.bgSurface)
-            .dashedBorder(MovexaColors.divider)
-            .padding(horizontal = 20.dp, vertical = 26.dp),
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(MovexaColors.homeCard)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MovexaColors.bgSurfaceElevated),
-                contentAlignment = Alignment.Center,
-            ) {
-                ToolIconView(
-                    tool = EditorTool.DRAFT,
-                    tint = MovexaColors.brandPrimary,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "No projects yet",
-                style = MovexaType.title,
-                color = MovexaColors.textPrimary,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Tap + Create to start your first video or photo edit.",
-                style = MovexaType.body,
-                color = MovexaColors.textSecondary,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MovexaPrimaryButton(text = "New video", onClick = onCreateVideo)
-                MovexaSecondaryButton(text = "New photo", onClick = onCreatePhoto)
+        androidx.compose.foundation.Canvas(modifier = Modifier.size(22.dp)) {
+            when (icon) {
+                HeaderIcon.CROWN -> drawCrownIcon(Color.White)
+                HeaderIcon.SETTINGS -> drawGearIcon(Color.White)
             }
         }
     }
 }
 
-/**
- * The strip of saved drafts.
- *
- * Each card shows the draft's poster frame, its title, how long ago it was
- * touched and how long the edit is. Tapping a card opens it.
- */
+/** A three-pointed crown, the Pro badge. */
+private fun DrawScope.drawCrownIcon(tint: Color) {
+    val factor = min(size.width, size.height) / ICON_GRID
+    scale(factor, factor, pivot = Offset.Zero) {
+        val path = Path().apply {
+            moveTo(4f, 18f)
+            lineTo(4f, 8f)
+            lineTo(9f, 12f)
+            lineTo(12f, 5f)
+            lineTo(15f, 12f)
+            lineTo(20f, 8f)
+            lineTo(20f, 18f)
+            close()
+        }
+        drawPath(path = path, color = tint)
+        drawLine(
+            color = tint,
+            start = Offset(3f, 20.5f),
+            end = Offset(21f, 20.5f),
+            strokeWidth = 2f,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+/** The settings gear. */
+private fun DrawScope.drawGearIcon(tint: Color) {
+    val factor = min(size.width, size.height) / ICON_GRID
+    scale(factor, factor, pivot = Offset.Zero) {
+        drawCircle(
+            color = tint,
+            radius = 7.5f,
+            center = Offset(12f, 12f),
+            style = Stroke(width = 2f),
+        )
+        drawCircle(color = tint, radius = 2.5f, center = Offset(12f, 12f))
+        for (index in 0 until 8) {
+            val angle = index * (Math.PI / 4.0)
+            val dx = (kotlin.math.cos(angle) * 9.5).toFloat()
+            val dy = (kotlin.math.sin(angle) * 9.5).toFloat()
+            drawLine(
+                color = tint,
+                start = Offset(12f + dx * 0.72f, 12f + dy * 0.72f),
+                end = Offset(12f + dx, 12f + dy),
+                strokeWidth = 2.2f,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+/* --------------------------------------------------------------- labels -- */
+
+/** An uppercase section label. */
 @Composable
-private fun DraftRow(
-    drafts: List<DraftSummary>,
-    onOpen: (String) -> Unit,
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MovexaType.title.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.6.sp,
+        ),
+        color = Color.White,
+        modifier = Modifier.padding(horizontal = 20.dp),
+    )
+}
+
+/** A section label with a link on the right, the way `WHAT'S NEW` reads. */
+@Composable
+private fun SectionLabelRow(
+    title: String,
+    action: String,
+    onAction: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        drafts.forEach { draft ->
-            DraftCard(draft = draft, onClick = { onOpen(draft.id) })
-        }
-    }
-}
-
-/** One saved draft: poster frame, title, age and length. */
-@Composable
-private fun DraftCard(
-    draft: DraftSummary,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .width(DRAFT_CARD_WIDTH)
-            .clip(MovexaShapes.medium)
-            .background(MovexaColors.bgSurface)
-            .clickable(onClick = onClick)
-            .padding(DRAFT_CARD_PADDING),
-    ) {
-        Box(
+        Text(
+            text = title,
+            style = MovexaType.title.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.6.sp,
+            ),
+            color = Color.White,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = action,
+            style = MovexaType.label.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(DRAFT_THUMBNAIL_RATIO)
-                .clip(MovexaShapes.small)
-                .background(MovexaColors.bgSurfaceElevated),
-            contentAlignment = Alignment.Center,
-        ) {
-            DraftThumbnail(path = draft.thumbnailPath)
-            Text(
-                text = formatDuration(draft.durationMs),
-                style = MovexaType.caption,
-                color = MovexaColors.textPrimary,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .clip(MovexaShapes.pill)
-                    .background(MovexaColors.bgBase.copy(alpha = 0.72f))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = draft.title,
-            style = MovexaType.body,
-            color = MovexaColors.textPrimary,
-            maxLines = 1,
-        )
-        Text(
-            text = relativeTime(draft.updatedAt),
-            style = MovexaType.caption,
-            color = MovexaColors.textSecondary,
-            maxLines = 1,
+                .clip(MovexaShapes.pill)
+                .clickable(onClick = onAction)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
 }
 
-/**
- * The draft's poster frame.
- *
- * The frame is the media the draft points at, so it is loaded through the
- * shared thumbnail loader. A photo draft keeps its picture in the draft
- * itself and has no file behind it, so it falls back to the draft glyph.
- */
-@Composable
-private fun DraftThumbnail(path: String?) {
-    var thumbnail by remember(path) { mutableStateOf<ImageBitmap?>(null) }
-    val density = LocalDensity.current
-    val widthPx = remember(density) {
-        with(density) { (DRAFT_CARD_WIDTH - DRAFT_CARD_PADDING * 2).toPx().toInt() }
-    }
+/* ---------------------------------------------------------------- create -- */
 
-    LaunchedEffect(path) {
-        thumbnail = if (path.isNullOrBlank()) {
-            null
-        } else {
-            val heightPx = (widthPx / DRAFT_THUMBNAIL_RATIO).toInt()
-            loadThumbnail("file://$path", widthPx, heightPx)
-        }
-    }
-
-    val image = thumbnail
-    if (image != null) {
-        Image(
-            bitmap = image,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-    } else {
-        ToolIconView(
-            tool = EditorTool.DRAFT,
-            tint = MovexaColors.brandPrimary,
-            modifier = Modifier.size(26.dp),
-        )
-    }
-}
-
-/** How long ago a draft was touched, in words. */
-private fun relativeTime(timestampMs: Long): String {
-    val elapsed = (currentTimeMillis() - timestampMs).coerceAtLeast(0L)
-    val minutes = elapsed / 60_000L
-    val hours = elapsed / 3_600_000L
-    val days = elapsed / 86_400_000L
-    return when {
-        minutes < 1L -> "just now"
-        minutes < 60L -> "$minutes min ago"
-        hours < 24L -> "$hours hour${plural(hours)} ago"
-        days < 7L -> "$days day${plural(days)} ago"
-        else -> "Earlier"
-    }
-}
-
-/** The length of a draft, as `m:ss`. */
-private fun formatDuration(durationMs: Long): String {
-    val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
-    val minutes = totalSeconds / 60L
-    val seconds = totalSeconds % 60L
-    return "$minutes:${seconds.toString().padStart(2, '0')}"
-}
-
-/** The plural "s" for a count, when it is not one. */
-private fun plural(count: Long): String = if (count == 1L) "" else "s"
-
-/** The width of a draft card. */
-private val DRAFT_CARD_WIDTH = 168.dp
-
-/** The padding inside a draft card. */
-private val DRAFT_CARD_PADDING = 8.dp
-
-/** The poster frame is drawn 16:9, like the canvas it comes from. */
-private const val DRAFT_THUMBNAIL_RATIO = 16f / 9f
-
-/**
- * The primary create actions, laid out the way InShot does it: one elevated
- * card holding three large circular buttons (Video, Photo, Collage).
- */
+/** The frosted card the three create buttons sit on. */
 @Composable
 private fun CreateCard(
     onCreateVideo: () -> Unit,
@@ -489,33 +326,38 @@ private fun CreateCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MovexaShapes.large)
-            .background(MovexaColors.bgSurface)
-            .padding(vertical = 22.dp, horizontal = 12.dp),
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MovexaColors.homeCard)
+            .border(
+                border = BorderStroke(1.dp, MovexaColors.homeCardBorder),
+                shape = RoundedCornerShape(24.dp),
+            )
+            .padding(vertical = 22.dp, horizontal = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         CreateCircleButton(
             label = "Video",
             tool = EditorTool.ANIMATION,
-            colors = listOf(MovexaColors.brandRamp[1], MovexaColors.brandSecondary),
+            colors = listOf(Color(0xFFFF7AB6), Color(0xFFFF4F6D)),
             onClick = onCreateVideo,
         )
         CreateCircleButton(
             label = "Photo",
             tool = EditorTool.BACKGROUND,
-            colors = listOf(MovexaColors.brandSecondary, MovexaColors.brandRamp[3]),
+            colors = listOf(Color(0xFFFF9E6D), Color(0xFFFF5F6D)),
             onClick = onCreatePhoto,
         )
         CreateCircleButton(
             label = "Collage",
             tool = EditorTool.COLLAGE,
-            colors = listOf(MovexaColors.brandRamp[3], MovexaColors.brandSecondaryDeep),
+            colors = listOf(Color(0xFFFFC46B), Color(0xFFFF8A4C)),
             onClick = onCreateCollage,
         )
     }
 }
 
-/** One large circular create button with its label underneath. */
+/** One of the three round create buttons. */
 @Composable
 private fun CreateCircleButton(
     label: String,
@@ -532,14 +374,14 @@ private fun CreateCircleButton(
     ) {
         Box(
             modifier = Modifier
-                .size(66.dp)
+                .size(62.dp)
                 .clip(CircleShape)
                 .background(Brush.linearGradient(colors)),
             contentAlignment = Alignment.Center,
         ) {
             ToolIconView(
                 tool = tool,
-                tint = MovexaColors.bgBase,
+                tint = Color.White,
                 modifier = Modifier.size(30.dp),
             )
         }
@@ -547,293 +389,241 @@ private fun CreateCircleButton(
         Text(
             text = label,
             style = MovexaType.body,
-            color = MovexaColors.textPrimary,
+            color = Color.White,
         )
     }
 }
 
-/** Secondary, server-backed entry points shown as a compact row of pills. */
+/* ----------------------------------------------------------------- news -- */
+
+/** The `WHAT'S NEW` row: the server-backed features, each one gated. */
 @Composable
-private fun SecondaryActions(
-    onTemplates: () -> Unit,
-    onAiTools: () -> Unit,
-    onStore: () -> Unit,
-) {
+private fun FeatureRow(onGatedFeature: (GatedFeature) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SecondaryPill(label = "Templates", tool = EditorTool.LAYOUT, onClick = onTemplates)
-        SecondaryPill(label = "AI Tools", tool = EditorTool.ENHANCE, onClick = onAiTools)
-        SecondaryPill(label = "Store", tool = EditorTool.STICKER, onClick = onStore)
+        FeatureCard(
+            title = "Templates",
+            subtitle = "Trending edits",
+            tool = EditorTool.LAYOUT,
+            colors = listOf(Color(0xFF5FD8FF), Color(0xFF3F7BFF)),
+            onClick = { onGatedFeature(GatedFeature.TEMPLATES) },
+        )
+        FeatureCard(
+            title = "AI Tools",
+            subtitle = "Cut, captions, more",
+            tool = EditorTool.ENHANCE,
+            colors = listOf(Color(0xFFB98CFF), Color(0xFF6E6AF0)),
+            onClick = { onGatedFeature(GatedFeature.AI_ENHANCE) },
+        )
+        FeatureCard(
+            title = "Store",
+            subtitle = "Music and stickers",
+            tool = EditorTool.STICKER,
+            colors = listOf(Color(0xFFFF8FB8), Color(0xFFFF5F8F)),
+            onClick = { onGatedFeature(GatedFeature.MARKETPLACE) },
+        )
     }
 }
 
+/** One card in the `WHAT'S NEW` row. */
 @Composable
-private fun SecondaryPill(
-    label: String,
+private fun FeatureCard(
+    title: String,
+    subtitle: String,
     tool: EditorTool,
+    colors: List<Color>,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .clip(MovexaShapes.pill)
-            .background(MovexaColors.bgSurface)
-            .clickable(onClick = onClick)
-            .padding(start = 14.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ToolIconView(
-            tool = tool,
-            tint = MovexaColors.brandSecondary,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(text = label, style = MovexaType.label, color = MovexaColors.textPrimary)
-    }
-}
-
-/** Rounded bottom bar: Home, Discover, Settings and the gradient create button. */
-@Composable
-private fun HomeBottomBar(
-    onDiscover: () -> Unit,
-    onSettings: () -> Unit,
-    onCreate: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(MovexaShapes.large)
-            .background(MovexaColors.bgSurface)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        NavItem(
-            icon = NavIcon.HOME,
-            label = "Home",
-            selected = true,
-            onClick = {},
-            modifier = Modifier.weight(1f),
-        )
-        NavItem(
-            icon = NavIcon.DISCOVER,
-            label = "Discover",
-            selected = false,
-            onClick = onDiscover,
-            modifier = Modifier.weight(1f),
-        )
-        NavItem(
-            icon = NavIcon.SETTINGS,
-            label = "Settings",
-            selected = false,
-            onClick = onSettings,
-            modifier = Modifier.weight(1f),
-        )
-        GradientFab(size = 48.dp, onClick = onCreate) {
-            Text("+", style = MovexaType.title, color = MovexaColors.bgBase)
-        }
-    }
-}
-
-@Composable
-private fun NavItem(
-    icon: NavIcon,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val tint = if (selected) MovexaColors.brandPrimary else MovexaColors.textSecondary
     Column(
-        modifier = modifier
-            .clip(MovexaShapes.small)
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(140.dp)
+            .clip(MovexaShapes.medium)
+            .background(MovexaColors.homeCard)
+            .clickable(onClick = onClick),
     ) {
-        NavIconCanvas(icon = icon, tint = tint, size = 22.dp)
-        Spacer(Modifier.height(3.dp))
-        Text(text = label, style = MovexaType.caption, color = tint, maxLines = 1)
-    }
-}
-
-/** The bottom-bar glyphs, drawn with Compose primitives so no icon font is needed. */
-private enum class NavIcon { HOME, DISCOVER, SETTINGS }
-
-@Composable
-private fun NavIconCanvas(
-    icon: NavIcon,
-    tint: Color,
-    size: Dp,
-) {
-    Canvas(modifier = Modifier.size(size)) {
-        drawNavIcon(icon = icon, tint = tint)
-    }
-}
-
-private fun DrawScope.drawNavIcon(icon: NavIcon, tint: Color) {
-    // The glyphs are drawn on a 24x24 grid, which is scaled to the canvas so
-    // the icon fills the space it is given.
-    val factor = min(size.width, size.height) / ICON_GRID
-    if (factor <= 0f) return
-    scale(factor, factor, pivot = Offset.Zero) {
-        drawNavIconOnGrid(icon = icon, tint = tint)
-    }
-}
-
-private fun DrawScope.drawNavIconOnGrid(icon: NavIcon, tint: Color) {
-    val stroke = 1.8f
-    when (icon) {
-        NavIcon.HOME -> {
-            val roof = Path().apply {
-                moveTo(3.5f, 11f)
-                lineTo(12f, 4f)
-                lineTo(20.5f, 11f)
-            }
-            drawPath(
-                path = roof,
-                color = tint,
-                style = Stroke(
-                    width = stroke,
-                    cap = StrokeCap.Round,
-                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
-                ),
-            )
-            drawRoundRect(
-                color = tint,
-                topLeft = Offset(6f, 11f),
-                size = Size(12f, 8.5f),
-                cornerRadius = CornerRadius(2f, 2f),
-                style = Stroke(width = stroke),
-            )
-        }
-        NavIcon.DISCOVER -> {
-            drawCircle(
-                color = tint,
-                radius = 8.5f,
-                center = Offset(12f, 12f),
-                style = Stroke(width = stroke),
-            )
-            val needle = Path().apply {
-                moveTo(15.5f, 8.5f)
-                lineTo(13.2f, 13.2f)
-                lineTo(8.5f, 15.5f)
-                lineTo(10.8f, 10.8f)
-                close()
-            }
-            drawPath(path = needle, color = tint)
-        }
-        NavIcon.SETTINGS -> {
-            drawCircle(
-                color = tint,
-                radius = 6.5f,
-                center = Offset(12f, 12f),
-                style = Stroke(width = stroke),
-            )
-            drawCircle(
-                color = tint,
-                radius = 2.6f,
-                center = Offset(12f, 12f),
-                style = Stroke(width = stroke),
-            )
-            repeat(8) { index ->
-                val angle = index * PI / 4.0
-                val dir = Offset(cos(angle).toFloat(), sin(angle).toFloat())
-                val center = Offset(12f, 12f)
-                drawLine(
-                    color = tint,
-                    start = Offset(center.x + dir.x * 7f, center.y + dir.y * 7f),
-                    end = Offset(center.x + dir.x * 10f, center.y + dir.y * 10f),
-                    strokeWidth = stroke,
-                    cap = StrokeCap.Round,
-                )
-            }
-        }
-    }
-}
-
-/** Dashed rounded border, used by the empty-projects card. */
-private fun Modifier.dashedBorder(color: Color): Modifier = drawBehind {
-    val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 12f))
-    drawRoundRect(
-        color = color,
-        topLeft = Offset(1f, 1f),
-        size = Size(size.width - 2f, size.height - 2f),
-        cornerRadius = CornerRadius(14f, 14f),
-        style = Stroke(width = 2f, pathEffect = pathEffect),
-    )
-}
-
-/** The "Create" sheet opened from the gradient button in the bottom bar. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CreateSheet(
-    onDismiss: () -> Unit,
-    onNewVideo: () -> Unit,
-    onNewPhoto: () -> Unit,
-    onCollage: () -> Unit,
-    onTemplates: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MovexaColors.bgSurfaceElevated,
-    ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-                .padding(bottom = 24.dp),
+                .aspectRatio(0.95f)
+                .background(Brush.linearGradient(colors)),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "Create new",
-                style = MovexaType.title,
-                color = MovexaColors.textPrimary,
-                modifier = Modifier.padding(bottom = 8.dp),
+            ToolIconView(
+                tool = tool,
+                tint = Color.White,
+                modifier = Modifier.size(34.dp),
             )
-            CreateOptionRow(tool = EditorTool.ANIMATION, label = "New Video", onClick = onNewVideo)
-            CreateOptionRow(tool = EditorTool.BACKGROUND, label = "New Photo", onClick = onNewPhoto)
-            CreateOptionRow(tool = EditorTool.COLLAGE, label = "Collage", onClick = onCollage)
-            CreateOptionRow(
-                tool = EditorTool.LAYOUT,
-                label = "Templates",
-                gated = true,
-                onClick = onTemplates,
+            Text(
+                text = "SOON",
+                style = MovexaType.caption.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .clip(MovexaShapes.pill)
+                    .background(Color.Black.copy(alpha = 0.28f))
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = title,
+            style = MovexaType.body.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 10.dp),
+        )
+        Text(
+            text = subtitle,
+            style = MovexaType.caption,
+            color = Color.White.copy(alpha = 0.78f),
+            modifier = Modifier.padding(horizontal = 10.dp),
+        )
+        Spacer(Modifier.height(10.dp))
     }
 }
 
+/* --------------------------------------------------------------- drafts -- */
+
+/** The row of saved drafts. */
 @Composable
-private fun CreateOptionRow(
-    tool: EditorTool,
-    label: String,
-    gated: Boolean = false,
-    onClick: () -> Unit,
+private fun DraftRow(
+    drafts: List<DraftSummary>,
+    onOpen: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MovexaShapes.small)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ToolIconView(
-            tool = tool,
-            tint = MovexaColors.brandPrimary,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(Modifier.width(14.dp))
-        Text(text = label, style = MovexaType.body, color = MovexaColors.textPrimary)
-        Spacer(Modifier.weight(1f))
-        if (gated) {
-            StatusChip(text = "SOON", background = MovexaColors.bgBase.copy(alpha = 0.7f))
+        drafts.forEach { draft ->
+            DraftCard(draft = draft, onClick = { onOpen(draft.id) })
         }
     }
 }
+
+/** One saved draft: poster frame, title, age and length. */
+@Composable
+private fun DraftCard(
+    draft: DraftSummary,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .clip(MovexaShapes.medium)
+            .background(MovexaColors.homeCard)
+            .clickable(onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 10f)
+                .clip(MovexaShapes.small)
+                .background(Color.Black.copy(alpha = 0.28f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            DraftThumbnail(path = draft.thumbnailPath)
+            Text(
+                text = formatDuration(draft.durationMs),
+                style = MovexaType.caption,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .clip(MovexaShapes.pill)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = draft.title,
+            style = MovexaType.caption.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        Text(
+            text = relativeTime(draft.updatedAt),
+            style = MovexaType.caption,
+            color = Color.White.copy(alpha = 0.72f),
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+/** The poster frame of a draft. */
+@Composable
+private fun DraftThumbnail(path: String?) {
+    val source = path?.let { "file://$it" }
+    if (source == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 10f),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "▤",
+                style = MovexaType.title,
+                color = Color.White.copy(alpha = 0.6f),
+            )
+        }
+        return
+    }
+
+    var bitmap by remember(source) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(source) {
+        bitmap = source?.let { loadThumbnail(it, 320, 200) }
+    }
+    bitmap?.let { loaded ->
+        Image(
+            bitmap = loaded,
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 10f),
+            contentScale = ContentScale.Crop,
+        )
+    }
+}
+
+/** "just now", "3 min ago", "yesterday". */
+private fun relativeTime(timestampMs: Long): String {
+    val now = System.currentTimeMillis()
+    val elapsed = (now - timestampMs).coerceAtLeast(0L)
+    val minutes = elapsed / 60_000L
+    val hours = elapsed / 3_600_000L
+    val days = elapsed / 86_400_000L
+    return when {
+        minutes < 1L -> "just now"
+        minutes < 60L -> "$minutes min ago"
+        hours < 24L -> "$hours hour${plural(hours)} ago"
+        days == 1L -> "yesterday"
+        else -> "$days days ago"
+    }
+}
+
+/** "0:06" or "1:02:03". */
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
+    val hours = totalSeconds / 3600L
+    val minutes = (totalSeconds % 3600L) / 60L
+    val seconds = totalSeconds % 60L
+    return if (hours > 0L) {
+        "$hours:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    } else {
+        "$minutes:${seconds.toString().padStart(2, '0')}"
+    }
+}
+
+private fun plural(count: Long): String = if (count == 1L) "" else "s"

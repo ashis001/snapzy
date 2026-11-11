@@ -98,6 +98,26 @@ object MovexaColors {
     /** A stronger scrim, for full-screen takeovers. */
     val overlayScrimStrong = Color(0xB3000000)
 
+    /* -------------------------------------------------------------- home -- */
+
+    /**
+     * The home screen's wallpaper.
+     *
+     * A bright gradient behind the springboard, the way the reference app
+     * opens on a colourful surface and then drops into a dark editor.
+     */
+    val homeGradient = listOf(
+        Color(0xFF1FC9B0),
+        Color(0xFF4F86F0),
+        Color(0xFF7B5CF5),
+    )
+
+    /** The frosted card the create buttons sit on. */
+    val homeCard = Color(0x26FFFFFF)
+
+    /** A brighter edge for the frosted card. */
+    val homeCardBorder = Color(0x4DFFFFFF)
+
     /* --------------------------------------------------------- content set -- */
 
     /**
