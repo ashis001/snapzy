@@ -60,6 +60,7 @@ import com.movexa.app.core.editing.EditProject
 import com.movexa.app.core.editing.EditorTool
 import com.movexa.app.core.storage.DraftSummary
 import com.movexa.app.core.storage.createDraftStore
+import com.movexa.app.core.storage.currentTimeMillis
 import com.movexa.app.core.media.loadThumbnail
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -250,7 +251,7 @@ private fun DrawScope.drawGearIcon(tint: Color) {
         )
         drawCircle(color = tint, radius = 2.5f, center = Offset(12f, 12f))
         for (index in 0 until 8) {
-            val angle = index * (Math.PI / 4.0)
+            val angle = index * (kotlin.math.PI / 4.0)
             val dx = (kotlin.math.cos(angle) * 9.5).toFloat()
             val dy = (kotlin.math.sin(angle) * 9.5).toFloat()
             drawLine(
@@ -599,7 +600,7 @@ private fun DraftThumbnail(path: String?) {
 
 /** "just now", "3 min ago", "yesterday". */
 private fun relativeTime(timestampMs: Long): String {
-    val now = System.currentTimeMillis()
+    val now = currentTimeMillis()
     val elapsed = (now - timestampMs).coerceAtLeast(0L)
     val minutes = elapsed / 60_000L
     val hours = elapsed / 3_600_000L
