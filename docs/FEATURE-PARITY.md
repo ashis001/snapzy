@@ -59,7 +59,7 @@ Matched against the captured InShot screens in `reference/`:
 | Draw / Doodle | ✅ | colour, brush size, baked into the export |
 | Canvas (ratio) | ✅ | 7 ratios, drives the export shape |
 | Background | ✅ | black / white / blur / custom |
-| **Transition** | ◐ | **the fade is rendered** — the frame dips to black at the clip boundary, measured at luma 0 in the exported file. Slide / Zoom / Wipe / Blur need a GL shader and are not rendered |
+| **Transition** | ✅ | **fade, dissolve, wipe, slide and zoom all render.** The incoming clip's opening is cut into stills and laid over the outgoing clip's tail, so the two clips really blend: a wipe leaves a clean vertical edge in the exported file, and the timeline shortens by the transition's 400 ms, exactly as InShot does. Only blur is left out (it needs a shader) |
 | Mask | ◐ | PIP layer only |
 | Blend | ◐ | PIP layer only, 11 modes |
 | **Music / Sound effects** | ✅ | **real audio** — the catalogue is synthesised to a WAV and mixed into the export (verified: the export's RMS doubles when a track is added) |
@@ -93,7 +93,7 @@ Matched against the captured InShot screens in `reference/`:
 | Colour grade (brightness / contrast / HSL / RGB) | ✅ applied at export |
 | Text + sticker + drawing overlays | ✅ composited into the frame |
 | Overlay time windows | ✅ an overlay only shows inside its own window |
-| Fade transition | ✅ the frame dips to black at the boundary |
+| Transitions | ✅ fade, dissolve, wipe, slide and zoom: the incoming clip's frames are laid over the outgoing clip's tail; the export is 0.4 s shorter per transition |
 | Picture in picture | ✅ composited into the frame |
 | Music + sound effects | ✅ mixed into the audio track |
 | 720p / 1080p / 4K | ✅ verified: 1080×1920, and 720×1280 on re-render |

@@ -154,6 +154,19 @@ bed of exactly the timeline's length, which is added to the export as one
 extra audio source. Media3 needs every audio source to agree on a channel
 count, so the bed is widened to match the clips.
 
+### Transitions
+
+Media3 1.5 has no transition primitive and its video compositor does not run in
+the export path, so a transition is drawn by hand: the incoming clip's opening
+is cut into stills with `MediaMetadataRetriever` and laid over the outgoing
+clip's tail with a per-frame overlay, while the incoming clip's own playback
+starts after those moments. The two clips therefore overlap, and the timeline
+shortens by the transition's length — the same as InShot.
+
+The treatment is decided per frame by the overlay's settings: the alpha ramps
+for a dissolve, the anchor moves for a slide, the scale ramps for a zoom, and
+a wipe bakes a moving edge into the stills themselves.
+
 ### Picture in picture
 
 Media3 1.5 cannot composite a second *video* into an export — the video

@@ -215,12 +215,12 @@ enum class TransitionKind(val label: String) {
      * Whether the export can render this transition.
      *
      * Media3 has no transition primitive and its video compositor does not
-     * run in the export path, so only the fades — which are drawn as a
-     * full-frame layer over the boundary — can be rendered today. The rest
-     * need a custom shader.
+     * run in the export path, so a transition is drawn by cutting the
+     * incoming clip's opening into stills and laying them over the outgoing
+     * clip's tail. Everything but the blur can be drawn that way.
      */
     val isRenderedInExport: Boolean
-        get() = this == NONE || this == FADE || this == DISSOLVE
+        get() = this != BLUR
 }
 
 /** The whole edit. The controller mutates copies of this. */

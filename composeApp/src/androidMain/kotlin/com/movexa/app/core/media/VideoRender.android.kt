@@ -42,6 +42,8 @@ import java.io.File
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 import kotlin.math.min
+import kotlin.math.max
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** How long a fade-to-black transition lasts, in milliseconds. */
@@ -106,6 +108,7 @@ private fun buildSequences(
     val sequences = mutableListOf<EditedMediaItemSequence>()
 
     val overlayLayers = project.overlays.filter { it !is Overlay.Pip }
+    val starts = clipStartTimes(project)
     val clipItems = project.clips.mapIndexed { index, clip ->
         buildClipItem(
             clip = clip,
@@ -116,7 +119,8 @@ private fun buildSequences(
             clipIndex = index,
             clips = project.clips,
             transition = project.transition,
-            clipStartMs = clipStartMs(project.clips, index),
+            clipStartMs = starts[index],
+            transitionLayers = buildTransitionLayers(project, index, starts, canvasSize),
         )
     }
     sequences += EditedMediaItemSequence.Builder(clipItems).build()
@@ -130,15 +134,6 @@ private fun buildSequences(
     }
 
     return sequences
-}
-
-/** Where a clip starts on the timeline, in milliseconds. */
-private fun clipStartMs(clips: List<VideoClip>, index: Int): Long {
-    var elapsed = 0L
-    for (position in 0 until index) {
-        elapsed += clips[position].timelineDurationMs
-    }
-    return elapsed
 }
 
 /**
@@ -158,10 +153,16 @@ private fun buildClipItem(
     clips: List<VideoClip>,
     transition: TransitionKind,
     clipStartMs: Long,
+    transitionLayers: List<TextureOverlay>,
 ): EditedMediaItem {
+    // A transition before this clip consumes the opening of its content; the
+    // transition itself draws those moments over the previous clip.
+    val headTrim = headTrimMs(clips = clips, index = clipIndex, transition = transition)
+    val sourceStart = clip.trimStartMs + (headTrim * clip.speed).toLong()
+
     val clipping = MediaItem.ClippingConfiguration.Builder()
-        .setStartPositionMs(clip.trimStartMs.coerceAtLeast(0L))
-        .setEndPositionMs(clip.trimEndMs.coerceAtLeast(clip.trimStartMs + 1L))
+        .setStartPositionMs(sourceStart.coerceAtLeast(0L))
+        .setEndPositionMs(clip.trimEndMs.coerceAtLeast(sourceStart + 1L))
         .build()
 
     val mediaItem = MediaItem.Builder()
@@ -186,14 +187,9 @@ private fun buildClipItem(
     }
 
     videoEffects += buildOverlayEffects(overlays, canvasSize, pipLayers)
-    videoEffects += buildTransitionEffects(
-        transition = transition,
-        clipIndex = clipIndex,
-        clipCount = clips.size,
-        clipStartMs = clipStartMs,
-        clipDurationMs = clip.timelineDurationMs,
-        canvasSize = canvasSize,
-    )
+    if (transitionLayers.isNotEmpty()) {
+        videoEffects += OverlayEffect(transitionLayers)
+    }
 
     if (!clip.muted) {
         audioProcessors += ToInt16PcmAudioProcessor()
@@ -282,52 +278,112 @@ private fun buildOverlayEffects(
 }
 
 /**
- * The dip to black that plays between two clips.
+ * The transition that plays between two clips.
  *
- * The outgoing clip fades down over its last moment and the incoming clip
- * fades up over its first, so the frame dips to black at the boundary — the
- * classic fade transition.
+ * The incoming clip's opening is cut into stills and laid over the outgoing
+ * clip's tail, so the two clips really do blend into each other in the
+ * finished file.
  */
-private fun buildTransitionEffects(
-    transition: TransitionKind,
-    clipIndex: Int,
-    clipCount: Int,
-    clipStartMs: Long,
-    clipDurationMs: Long,
+private fun buildTransitionLayers(
+    project: EditProject,
+    index: Int,
+    starts: List<Long>,
     canvasSize: Pair<Int, Int>,
-): List<Effect> {
-    if (transition == TransitionKind.NONE || clipCount < 2) return emptyList()
+): List<TextureOverlay> {
+    val kind = project.transition
+    if (kind == TransitionKind.NONE) return emptyList()
 
-    val half = TRANSITION_MS / 2
-    if (half <= 0L) return emptyList()
+    val outgoing = project.clips.getOrNull(index) ?: return emptyList()
+    val incoming = project.clips.getOrNull(index + 1) ?: return emptyList()
+    if (outgoing.id == incoming.id) return emptyList()
 
-    val layers = mutableListOf<TextureOverlay>()
-    val frame = blackFrame(canvasSize.first, canvasSize.second)
+    val startUs = starts[index + 1] * 1000L - TRANSITION_MS * 1000L
+    val endUs = starts[index + 1] * 1000L
+    if (endUs <= startUs) return emptyList()
 
-    val clipEndMs = clipStartMs + clipDurationMs
+    val (width, height) = transitionFrameSize(kind, canvasSize.first, canvasSize.second)
+    val frames = extractTransitionFrames(
+        path = incoming.path,
+        sourceStartMs = incoming.trimStartMs,
+        sourceEndMs = incoming.trimStartMs + (TRANSITION_MS * incoming.speed).toLong(),
+        width = width,
+        height = height,
+        kind = kind,
+    )
+    if (frames.isEmpty()) return emptyList()
 
-    if (clipIndex < clipCount - 1) {
-        // Fading out towards the next clip.
-        layers += FadingBitmapOverlay(
-            bitmap = frame,
-            startUs = (clipEndMs - half).coerceAtLeast(0L) * 1000L,
-            endUs = clipEndMs * 1000L,
-            fadeIn = true,
+    return when (kind) {
+        // Down to black and back up again.
+        TransitionKind.FADE -> listOf(
+            TransitionFrameOverlay(
+                frames = listOf(blackFrame(canvasSize.first, canvasSize.second)),
+                startUs = startUs,
+                endUs = endUs,
+                alphaAt = { 1f - abs(2f * it - 1f) },
+            ),
+            TransitionFrameOverlay(
+                frames = frames,
+                startUs = startUs,
+                endUs = endUs,
+                alphaAt = { max(0f, 2f * it - 1f) },
+            ),
         )
-    }
-    if (clipIndex > 0) {
-        // Fading in from the previous clip.
-        layers += FadingBitmapOverlay(
-            bitmap = frame,
-            startUs = clipStartMs * 1000L,
-            endUs = (clipStartMs + half) * 1000L,
-            fadeIn = false,
-        )
-    }
 
-    if (layers.isEmpty()) return emptyList()
-    return listOf(OverlayEffect(layers))
+        // The incoming clip fades in over the outgoing one.
+        TransitionKind.DISSOLVE -> listOf(
+            TransitionFrameOverlay(frames, startUs, endUs, { it }),
+        )
+
+        // The edge of the wipe is baked into the frames.
+        TransitionKind.WIPE -> listOf(
+            TransitionFrameOverlay(frames, startUs, endUs, { 1f }),
+        )
+
+        // The incoming clip slides in from the right.
+        TransitionKind.SLIDE -> listOf(
+            TransitionFrameOverlay(
+                frames = frames,
+                startUs = startUs,
+                endUs = endUs,
+                alphaAt = { 1f },
+                anchorAt = { 0.45f * (1f - it) to 0f },
+            ),
+        )
+
+        // The incoming clip grows out of the frame.
+        TransitionKind.ZOOM -> listOf(
+            TransitionFrameOverlay(
+                frames = frames,
+                startUs = startUs,
+                endUs = endUs,
+                alphaAt = { 1f },
+                scaleAt = { val size = 1.25f - 0.25f * it; size to size },
+            ),
+        )
+
+        else -> emptyList()
+    }
 }
+
+/**
+ * When each clip starts on the composition's timeline.
+ *
+ * A clip whose opening is eaten by a transition is that much shorter on the
+ * timeline, which is what makes the two clips overlap.
+ */
+private fun clipStartTimes(project: EditProject): List<Long> {
+    val starts = mutableListOf<Long>()
+    var elapsed = 0L
+    project.clips.forEachIndexed { index, clip ->
+        starts += elapsed
+        elapsed += clip.timelineDurationMs - headTrimMs(project.clips, index, project.transition)
+    }
+    return starts
+}
+
+/** How much of a clip's opening the transition before it consumes. */
+private fun headTrimMs(clips: List<VideoClip>, index: Int, transition: TransitionKind): Long =
+    if (index > 0 && transition != TransitionKind.NONE) TRANSITION_MS else 0L
 
 /** Maps our normalised 0..1 overlay position onto Media3's -1..1 frame anchors. */
 private fun overlaySettings(overlay: Overlay): OverlaySettings = OverlaySettings.Builder()

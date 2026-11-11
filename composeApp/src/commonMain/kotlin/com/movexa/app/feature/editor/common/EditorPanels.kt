@@ -542,7 +542,7 @@ fun TransitionPanel(
             Text(
                 text = "Only ${TransitionKind.entries.filter { it.isRenderedInExport && it != TransitionKind.NONE }
                     .joinToString(" and ") { it.label }} reach the file — " +
-                    "${pending.joinToString(", ") { it.label }} need a shader pipeline.",
+                    "${pending.joinToString(", ") { it.label }} needs a shader pipeline.",
                 style = MovexaType.label,
                 color = MovexaColors.textTertiary,
                 modifier = Modifier.padding(top = 8.dp),

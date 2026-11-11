@@ -83,16 +83,6 @@ internal class FadingBitmapOverlay(
     }
 }
 
-/** Copies [OverlaySettings] with a different alpha. */
-internal fun OverlaySettings.withAlpha(alpha: Float): OverlaySettings = OverlaySettings.Builder()
-    .setAlphaScale(alpha.coerceIn(0f, 1f))
-    .setBackgroundFrameAnchor(backgroundFrameAnchor.first, backgroundFrameAnchor.second)
-    .setOverlayFrameAnchor(overlayFrameAnchor.first, overlayFrameAnchor.second)
-    .setScale(scale.first, scale.second)
-    .setRotationDegrees(rotationDegrees)
-    .setHdrLuminanceMultiplier(hdrLuminanceMultiplier)
-    .build()
-
 /** A solid black frame the size of the canvas. */
 internal fun blackFrame(width: Int, height: Int): Bitmap =
     Bitmap.createBitmap(max(1, width), max(1, height), Bitmap.Config.ARGB_8888).apply {
