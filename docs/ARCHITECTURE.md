@@ -128,6 +128,16 @@ over its first 200 ms, which puts a dip to black exactly on the boundary.
 Media3's overlay anchors use OpenGL's convention, where `+1` is the **top**,
 so a normalised `y` of `0.25` becomes an anchor of `1 - 2y`.
 
+### The preview needs a frame processor
+
+A paused ExoPlayer with an *empty* effect list does not draw its first frame,
+so the preview would stay black until playback started. The chain therefore
+always holds an identity `ScaleAndRotateTransformation`, and the colour
+effects are appended to it.
+
+Swapping the effects rebuilds the video renderer, which detaches the surface —
+so the `TextureView` is handed back to the player afterwards.
+
 ### The colour grade is one piece of maths
 
 `core/media/ColorEffects.android.kt` maps a filter and an adjustment onto

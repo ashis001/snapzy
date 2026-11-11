@@ -7,10 +7,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
+import androidx.media3.effect.ScaleAndRotateTransformation
+import androidx.media3.common.Effect
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.delay
 import java.io.File
@@ -34,6 +39,10 @@ actual fun VideoPlayerSurface(
     lookGrade: com.snapzy.app.core.editing.LookGrade?,
 ) {
     val context = LocalContext.current
+    var appliedEffects by remember(filePath) { mutableStateOf(emptyList<Effect>()) }
+    // Media3 rebuilds the video renderer when the effects change, which
+    // detaches the surface, so the view is kept to hand back to the player.
+    val textureView = remember(filePath) { arrayOfNulls<TextureView>(1) }
     val exoPlayer = remember(filePath) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(File(filePath))))
@@ -58,14 +67,42 @@ actual fun VideoPlayerSurface(
 
     // The preview carries the real grade: Media3 renders the colour effects
     // into the surface, so the user sees the same pixels the export will have.
+    //
+    // Swapping the video renderer while the player is still preparing leaves
+    // it stuck, so the effects are only applied once it is ready.
     LaunchedEffect(exoPlayer, lookGrade) {
         val grade = lookGrade
-        val effects = if (grade == null) {
-            emptyList()
-        } else {
-            colorEffects(grade.filter, grade.adjust)
+        // The chain always holds a frame processor, even with no grade: a
+        // player with an empty effect list does not draw its first frame
+        // while it is paused, so the preview would stay black.
+        val effects = buildList {
+            add(
+                ScaleAndRotateTransformation.Builder()
+                    .setScale(1f, 1f)
+                    .setRotationDegrees(0f)
+                    .build(),
+            )
+            if (grade != null) addAll(colorEffects(grade.filter, grade.adjust))
+        }
+        if (effects == appliedEffects) return@LaunchedEffect
+
+        while (exoPlayer.playbackState == ExoPlayer.STATE_IDLE) {
+            delay(50)
         }
         runCatching { exoPlayer.setVideoEffects(effects) }
+        appliedEffects = effects
+        // The renderer was rebuilt, so the surface has to be handed back.
+        textureView[0]?.let { view -> runCatching { exoPlayer.setVideoTextureView(view) } }
+    }
+
+    // A paused player does not always draw its first frame, so the surface is
+    // handed back once the player is ready. That makes the preview show the
+    // poster frame straight away instead of only after playback starts.
+    LaunchedEffect(exoPlayer) {
+        while (exoPlayer.playbackState == ExoPlayer.STATE_IDLE) {
+            delay(50)
+        }
+        textureView[0]?.let { view -> runCatching { exoPlayer.setVideoTextureView(view) } }
     }
 
     LaunchedEffect(exoPlayer) {
@@ -103,7 +140,11 @@ actual fun VideoPlayerSurface(
                 }
             }
         },
-        update = { view -> view.setRenderEffect(null) },
+        update = { view ->
+            // Only remember the view: handing the surface back on every
+            // recomposition would restart the renderer over and over.
+            textureView[0] = view
+        },
         modifier = modifier,
     )
 }

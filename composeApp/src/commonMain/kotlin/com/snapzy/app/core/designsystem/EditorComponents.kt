@@ -188,16 +188,25 @@ fun OptionChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
+    /** A disabled chip is dimmed and does not react to a tap. */
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier
             .clip(SnapzyShapes.small)
             .background(if (selected) SnapzyColors.brandPrimary.copy(alpha = 0.16f) else SnapzyColors.bgBase)
             .border(
-                BorderStroke(1.dp, if (selected) SnapzyColors.brandPrimary else SnapzyColors.divider),
+                BorderStroke(
+                    1.dp,
+                    when {
+                        selected -> SnapzyColors.brandPrimary
+                        !enabled -> SnapzyColors.borderSubtle
+                        else -> SnapzyColors.divider
+                    },
+                ),
                 SnapzyShapes.small,
             )
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -206,7 +215,11 @@ fun OptionChip(
         Text(
             text = label,
             style = SnapzyType.label,
-            color = if (selected) SnapzyColors.brandPrimary else SnapzyColors.textPrimary,
+            color = when {
+                selected -> SnapzyColors.brandPrimary
+                !enabled -> SnapzyColors.textTertiary
+                else -> SnapzyColors.textPrimary
+            },
         )
     }
 }

@@ -528,12 +528,25 @@ fun TransitionPanel(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             TransitionKind.entries.forEach { kind ->
+                val rendered = kind.isRenderedInExport
                 OptionChip(
-                    label = kind.label,
+                    label = if (rendered) kind.label else "${kind.label} ·",
                     selected = selected == kind,
+                    enabled = rendered,
                     onClick = { onSelect(kind) },
                 )
             }
+        }
+        val pending = TransitionKind.entries.filter { !it.isRenderedInExport }
+        if (pending.isNotEmpty()) {
+            Text(
+                text = "Only ${TransitionKind.entries.filter { it.isRenderedInExport && it != TransitionKind.NONE }
+                    .joinToString(" and ") { it.label }} reach the file — " +
+                    "${pending.joinToString(", ") { it.label }} need a shader pipeline.",
+                style = SnapzyType.label,
+                color = SnapzyColors.textTertiary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
 }
