@@ -16,12 +16,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="Snapzy"
-        android:theme="@style/Theme.Snapzy">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="Movexa"
+        android:theme="@style/Theme.Movexa">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Snapzy">
+            android:theme="@style/Theme.Movexa">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

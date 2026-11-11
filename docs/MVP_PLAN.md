@@ -1,4 +1,4 @@
-# Snapzy — MVP Build Plan (Kotlin Multiplatform)
+# Movexa — MVP Build Plan (Kotlin Multiplatform)
 
 Companion to [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md). This file is the engineering plan: module layout, screen-by-screen build order, and phase-by-phase acceptance criteria so the app can be built incrementally without ever being in a broken state.
 
@@ -55,7 +55,7 @@ enum class GatedFeature(val title: String, val description: String, val icon: St
     MARKETPLACE("Marketplace", "Browse and download more stickers, music, and effects.", "ic_store"),
     TEMPLATES("Templates", "Trending edit templates, ready to remix.", "ic_template"),
     DISCOVER("Discover", "See what the community is creating.", "ic_discover"),
-    GO_PRO("Snapzy Pro", "Unlock premium filters, templates, and remove the watermark.", "ic_pro"),
+    GO_PRO("Movexa Pro", "Unlock premium filters, templates, and remove the watermark.", "ic_pro"),
     ACCOUNT("Account", "Sign in to back up projects and sync across devices.", "ic_account"),
 }
 

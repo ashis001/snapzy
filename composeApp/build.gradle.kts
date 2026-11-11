@@ -56,11 +56,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.snapzy.app"
+    namespace = "com.movexa.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.snapzy.app"
+        applicationId = "com.movexa.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

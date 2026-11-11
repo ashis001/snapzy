@@ -14,7 +14,7 @@
 set -uo pipefail
 
 SERIAL="${1:-$(adb devices | awk 'NR==2 {print $1}')}"
-PKG="com.snapzy.app"
+PKG="com.movexa.app"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHOTS="$ROOT/build/verify"
 APK="$ROOT/composeApp/build/outputs/apk/debug/composeApp-debug.apk"

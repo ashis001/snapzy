@@ -1,6 +1,6 @@
-# Feature parity — Snapzy vs InShot 2.243
+# Feature parity — Movexa vs InShot 2.243
 
-What Snapzy does today, measured against the reference app
+What Movexa does today, measured against the reference app
 (`INSHOT-2.243-FEATURE-REPORT.md`). "Verified" means it was driven on an
 Android 15 emulator and the result inspected, not just compiled.
 
@@ -12,7 +12,7 @@ design) · **❌ not built**
 ## 1. Screen flow
 
 InShot's flow is `Springboard → Create → Picker → Editor → Export → Share`.
-Snapzy follows it exactly:
+Movexa follows it exactly:
 
 | Route | Screen | Status |
 |---|---|---|
@@ -97,7 +97,7 @@ Matched against the captured InShot screens in `reference/`:
 | Picture in picture | ✅ composited into the frame |
 | Music + sound effects | ✅ mixed into the audio track |
 | 720p / 1080p / 4K | ✅ verified: 1080×1920, and 720×1280 on re-render |
-| Save to the device gallery | ✅ `Movies/Snapzy/`, `Pictures/Snapzy/` |
+| Save to the device gallery | ✅ `Movies/Movexa/`, `Pictures/Movexa/` |
 | OS share sheet | ✅ |
 | Photo export (flatten to JPEG) | ✅ |
 | iOS export | ◐ trim, speed, mute/gain, colour grade, overlays, transitions and audio — **compiled, not yet run on a device** |

@@ -1,12 +1,12 @@
-# Snapzy — Product Specification
+# Movexa — Product Specification
 
-> Original app, original screen design. Feature *categories* are modeled on the mobile video/photo editor category (trim, crop, filters, collage, chroma key, keyframes, AI tools, Pro subscription, etc.) — the IA, screens, navigation, color system and copy below are designed fresh for Snapzy, not copied from any existing app.
+> Original app, original screen design. Feature *categories* are modeled on the mobile video/photo editor category (trim, crop, filters, collage, chroma key, keyframes, AI tools, Pro subscription, etc.) — the IA, screens, navigation, color system and copy below are designed fresh for Movexa, not copied from any existing app.
 
 ## 1. App overview
 
 | | |
 |---|---|
-| Brand name | **Snapzy** |
+| Brand name | **Movexa** |
 | Tagline | "Edit fast. Post faster." |
 | Package ID | `com.snapzy.app` |
 | Platforms | Android + iOS, one shared codebase (Kotlin Multiplatform) |
@@ -24,8 +24,8 @@ Dark UI is the right call for an editor — it keeps focus on the media preview 
 | `bg.base` | `#0E0F13` | App background, editor canvas surround |
 | `bg.surface` | `#1A1C22` | Cards, sheets, toolbars |
 | `bg.surfaceElevated` | `#24262E` | Modals, active tool panel |
-| `brand.primary` | `#14E8C4` (Snapzy Teal) | Primary actions, active tool highlight, progress |
-| `brand.secondary` | `#7C4DFF` (Snapzy Violet) | Secondary accents, gradients, selection highlight |
+| `brand.primary` | `#14E8C4` (Movexa Teal) | Primary actions, active tool highlight, progress |
+| `brand.secondary` | `#7C4DFF` (Movexa Violet) | Secondary accents, gradients, selection highlight |
 | `brand.gradient` | `linear(#14E8C4 → #7C4DFF)` | Logo, splash, Pro badge, export button |
 | `accent.pro` | `#FFC247` | "PRO" / paywall badges, premium content tag |
 | `accent.success` | `#3DDC84` | Export success, save confirmation |
@@ -118,7 +118,7 @@ Navigation pattern: single-activity, Compose Multiplatform navigation graph, bot
 **Export**
 - Local render to device (resolution choice: 480p/720p/1080p, frame rate match source)
 - Save to device gallery
-- Share via OS native share sheet (hands off to installed apps — not a Snapzy server call)
+- Share via OS native share sheet (hands off to installed apps — not a Movexa server call)
 
 ### 4.2 Server/API-dependent — **Coming Soon in MVP**
 

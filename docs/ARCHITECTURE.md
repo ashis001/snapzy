@@ -1,4 +1,4 @@
-# Snapzy — architecture
+# Movexa — architecture
 
 How the app is actually built, as opposed to how `MVP_PLAN.md` originally
 laid it out. This file describes the code that exists today.
@@ -206,7 +206,7 @@ upright frame while `ffprobe` still reports the landscape coded size.
 
 A 6-second 640×1138 portrait source exported through the app produces a file
 that reports **1080×1920, H.264, 30 fps, 6.04 s, AAC**, and the 720p chip
-re-renders to 720×1280. Saving writes it to `Movies/Snapzy/` on the device.
+re-renders to 720×1280. Saving writes it to `Movies/Movexa/` on the device.
 
 Measured on the exported file:
 
@@ -252,7 +252,7 @@ editor chrome.
 
 The app is a video editor, so the chrome is deliberately quiet: **the user's
 footage is always the most colourful thing on screen.** Every colour in the app
-comes from `SnapzyColors` — there is not a single hex literal outside
+comes from `MovexaColors` — there is not a single hex literal outside
 `core/designsystem/`.
 
 **Surfaces — a five-step cool near-black elevation ladder**

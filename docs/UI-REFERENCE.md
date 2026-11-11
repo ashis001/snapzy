@@ -20,7 +20,7 @@ then the flow was driven with `adb shell input tap` and captured with
 
 > These images are reference material for layout only. InShot's fonts, icons,
 > illustrations, LUT tables, stickers and music are their assets — do not copy
-> them. Snapzy's own visual identity is the dark teal/violet system in
+> them. Movexa's own visual identity is the dark teal/violet system in
 > `core/designsystem`.
 
 ---
@@ -43,7 +43,7 @@ then the flow was driven with `adb shell input tap` and captured with
 └────────────────────────────┘
 ```
 
-**Snapzy equivalent:** `feature/home/HomeScreen.kt` keeps the same skeleton —
+**Movexa equivalent:** `feature/home/HomeScreen.kt` keeps the same skeleton —
 wordmark + PRO chip + settings at the top, a `Create new` section holding one
 elevated card with three gradient circular buttons (Video / Photo / Collage),
 then a compact row of secondary pills (Templates, AI Tools, Store), then the
@@ -51,7 +51,7 @@ roadmap list, then a rounded bottom bar with Home / Discover / Settings and a
 gradient create FAB.
 
 The one deliberate difference is the palette: InShot uses a warm orange→pink
-gradient on a light theme; Snapzy keeps the dark theme from
+gradient on a light theme; Movexa keeps the dark theme from
 `PRODUCT_SPEC.md` §2.
 
 ## 2. Media picker
