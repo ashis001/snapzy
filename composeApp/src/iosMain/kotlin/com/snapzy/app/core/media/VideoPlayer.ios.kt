@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
+import com.snapzy.app.core.editing.LookGrade
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.delay
@@ -55,8 +56,10 @@ actual fun VideoPlayerSurface(
     seekToMs: Long?,
     onPositionChanged: (positionMs: Long, durationMs: Long) -> Unit,
     modifier: Modifier,
+    lookGrade: LookGrade?,
 ) {
     val player = remember(filePath) { AVPlayer(uRL = NSURL.fileURLWithPath(filePath)) }
+
     val playerLayer = remember(player) {
         AVPlayerLayer().apply {
             this.player = player
@@ -89,3 +92,14 @@ actual fun VideoPlayerSurface(
         onRelease = { playerLayer.removeFromSuperlayer() },
     )
 }
+
+
+/**
+ * iOS cannot colour-grade the live preview.
+ *
+ * `AVPlayerItem.videoComposition` — the only way AVFoundation can filter the
+ * frames a player shows — is not exposed by the Kotlin/Native bindings, so the
+ * editor falls back to its translucent approximation here. The exported file
+ * is graded properly on both platforms.
+ */
+actual fun supportsPreviewColourGrade(): Boolean = false

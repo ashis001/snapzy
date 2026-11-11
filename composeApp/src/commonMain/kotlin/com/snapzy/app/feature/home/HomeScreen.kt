@@ -1,6 +1,7 @@
 package com.snapzy.app.feature.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,9 +28,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,11 +44,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -59,7 +67,13 @@ import com.snapzy.app.core.designsystem.SnapzyShapes
 import com.snapzy.app.core.designsystem.SnapzyType
 import com.snapzy.app.core.designsystem.StatusChip
 import com.snapzy.app.core.designsystem.ToolIconView
+import com.snapzy.app.core.editing.EditProject
 import com.snapzy.app.core.editing.EditorTool
+import com.snapzy.app.core.media.loadThumbnail
+import com.snapzy.app.core.storage.DraftSummary
+import com.snapzy.app.core.storage.createDraftStore
+import com.snapzy.app.core.storage.currentTimeMillis
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -71,6 +85,9 @@ import kotlin.math.sin
  * large create tiles and a rounded bottom bar. Everything that needs a backend
  * (templates, AI tools, the store, Discover, Account) opens the shared Coming
  * Soon sheet through [onGatedFeature].
+ *
+ * The "Projects" area lists the saved drafts; tapping one hands the edit back
+ * through [onOpenDraft] so it can be reopened in the editor.
  */
 @Composable
 fun HomeScreen(
@@ -78,8 +95,20 @@ fun HomeScreen(
     onCreatePhoto: () -> Unit,
     onCreateCollage: () -> Unit,
     onGatedFeature: (GatedFeature) -> Unit,
+    onOpenDraft: (EditProject) -> Unit = {},
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+
+    val draftStore = remember { createDraftStore() }
+    val scope = rememberCoroutineScope()
+    var drafts by remember { mutableStateOf<List<DraftSummary>>(emptyList()) }
+
+    // The list is reloaded every time the screen comes back into view, so a
+    // draft saved in the editor appears as soon as the user returns.
+    LifecycleResumeEffect(draftStore) {
+        scope.launch { drafts = draftStore.list() }
+        onPauseOrDispose { }
+    }
 
     Column(
         modifier = Modifier
@@ -101,10 +130,22 @@ fun HomeScreen(
             Spacer(Modifier.height(4.dp))
 
             SectionHeader(title = "Projects", subtitle = "Pick up where you left off")
-            ProjectsSection(
-                onCreateVideo = onCreateVideo,
-                onCreatePhoto = onCreatePhoto,
-            )
+            if (drafts.isEmpty()) {
+                ProjectsSection(
+                    onCreateVideo = onCreateVideo,
+                    onCreatePhoto = onCreatePhoto,
+                )
+            } else {
+                DraftRow(
+                    drafts = drafts,
+                    onOpen = { id ->
+                        scope.launch {
+                            val project = draftStore.load(id)
+                            if (project != null) onOpenDraft(project)
+                        }
+                    },
+                )
+            }
 
             Spacer(Modifier.height(22.dp))
 
@@ -227,10 +268,10 @@ private fun SectionHeader(title: String, subtitle: String) {
 }
 
 /**
- * The recent-projects area.
+ * The recent-projects area, shown when nothing has been saved yet.
  *
- * There is no draft persistence yet, so instead of fake cards this renders a
- * designed empty state that points at the create actions.
+ * Instead of fake cards this renders a designed empty state that points at
+ * the create actions.
  */
 @Composable
 private fun ProjectsSection(
@@ -281,6 +322,156 @@ private fun ProjectsSection(
         }
     }
 }
+
+/**
+ * The strip of saved drafts.
+ *
+ * Each card shows the draft's poster frame, its title, how long ago it was
+ * touched and how long the edit is. Tapping a card opens it.
+ */
+@Composable
+private fun DraftRow(
+    drafts: List<DraftSummary>,
+    onOpen: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        drafts.forEach { draft ->
+            DraftCard(draft = draft, onClick = { onOpen(draft.id) })
+        }
+    }
+}
+
+/** One saved draft: poster frame, title, age and length. */
+@Composable
+private fun DraftCard(
+    draft: DraftSummary,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(DRAFT_CARD_WIDTH)
+            .clip(SnapzyShapes.medium)
+            .background(SnapzyColors.bgSurface)
+            .clickable(onClick = onClick)
+            .padding(DRAFT_CARD_PADDING),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(DRAFT_THUMBNAIL_RATIO)
+                .clip(SnapzyShapes.small)
+                .background(SnapzyColors.bgSurfaceElevated),
+            contentAlignment = Alignment.Center,
+        ) {
+            DraftThumbnail(path = draft.thumbnailPath)
+            Text(
+                text = formatDuration(draft.durationMs),
+                style = SnapzyType.caption,
+                color = SnapzyColors.textPrimary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .clip(SnapzyShapes.pill)
+                    .background(SnapzyColors.bgBase.copy(alpha = 0.72f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = draft.title,
+            style = SnapzyType.body,
+            color = SnapzyColors.textPrimary,
+            maxLines = 1,
+        )
+        Text(
+            text = relativeTime(draft.updatedAt),
+            style = SnapzyType.caption,
+            color = SnapzyColors.textSecondary,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * The draft's poster frame.
+ *
+ * The frame is the media the draft points at, so it is loaded through the
+ * shared thumbnail loader. A photo draft keeps its picture in the draft
+ * itself and has no file behind it, so it falls back to the draft glyph.
+ */
+@Composable
+private fun DraftThumbnail(path: String?) {
+    var thumbnail by remember(path) { mutableStateOf<ImageBitmap?>(null) }
+    val density = LocalDensity.current
+    val widthPx = remember(density) {
+        with(density) { (DRAFT_CARD_WIDTH - DRAFT_CARD_PADDING * 2).toPx().toInt() }
+    }
+
+    LaunchedEffect(path) {
+        thumbnail = if (path.isNullOrBlank()) {
+            null
+        } else {
+            val heightPx = (widthPx / DRAFT_THUMBNAIL_RATIO).toInt()
+            loadThumbnail("file://$path", widthPx, heightPx)
+        }
+    }
+
+    val image = thumbnail
+    if (image != null) {
+        Image(
+            bitmap = image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    } else {
+        ToolIconView(
+            tool = EditorTool.DRAFT,
+            tint = SnapzyColors.brandPrimary,
+            modifier = Modifier.size(26.dp),
+        )
+    }
+}
+
+/** How long ago a draft was touched, in words. */
+private fun relativeTime(timestampMs: Long): String {
+    val elapsed = (currentTimeMillis() - timestampMs).coerceAtLeast(0L)
+    val minutes = elapsed / 60_000L
+    val hours = elapsed / 3_600_000L
+    val days = elapsed / 86_400_000L
+    return when {
+        minutes < 1L -> "just now"
+        minutes < 60L -> "$minutes min ago"
+        hours < 24L -> "$hours hour${plural(hours)} ago"
+        days < 7L -> "$days day${plural(days)} ago"
+        else -> "Earlier"
+    }
+}
+
+/** The length of a draft, as `m:ss`. */
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+/** The plural "s" for a count, when it is not one. */
+private fun plural(count: Long): String = if (count == 1L) "" else "s"
+
+/** The width of a draft card. */
+private val DRAFT_CARD_WIDTH = 168.dp
+
+/** The padding inside a draft card. */
+private val DRAFT_CARD_PADDING = 8.dp
+
+/** The poster frame is drawn 16:9, like the canvas it comes from. */
+private const val DRAFT_THUMBNAIL_RATIO = 16f / 9f
 
 /**
  * The primary create actions, laid out the way InShot does it: one elevated

@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import com.snapzy.app.core.editing.AudioKind
 import com.snapzy.app.core.editing.AudioTrack
+import com.snapzy.app.core.media.AudioLibrary
 import com.snapzy.app.core.editing.CatalogueItem
 import com.snapzy.app.core.editing.EditProject
 import com.snapzy.app.core.editing.EditorController
@@ -301,16 +302,23 @@ class VideoEditSession(
 
     /* --------------------------------------------------------------- audio -- */
 
-    /** Adds a music or sound-effect track from the bundled catalogue. */
-    fun addAudioTrack(item: CatalogueItem, kind: AudioKind) {
+    /**
+     * Adds a music or sound-effect track from the bundled catalogue.
+     *
+     * The catalogue entry is synthesised into a real WAV the first time it is
+     * used, so the track points at audio that actually plays in the export.
+     */
+    suspend fun addAudioTrack(item: CatalogueItem, kind: AudioKind) {
         val id = nextId()
+        val materialised = AudioLibrary.materialise(item, kind)
         commit { project ->
             project.copy(
                 audioTracks = project.audioTracks + AudioTrack(
                     id = id,
                     label = item.title,
                     kind = kind,
-                    durationMs = item.durationMs,
+                    sourcePath = materialised?.sourcePath,
+                    durationMs = materialised?.durationMs ?: item.durationMs,
                 ),
             )
         }

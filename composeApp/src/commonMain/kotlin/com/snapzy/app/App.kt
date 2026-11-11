@@ -22,6 +22,8 @@ import com.snapzy.app.feature.collage.CollageScreen
 import com.snapzy.app.feature.editor.photo.PhotoEditorScreen
 import com.snapzy.app.feature.editor.video.VideoEditorScreen
 import com.snapzy.app.feature.export.ExportScreen
+import com.snapzy.app.core.editing.EditKind
+import com.snapzy.app.core.media.EditorSessionStore
 import com.snapzy.app.feature.home.HomeScreen
 import com.snapzy.app.feature.onboarding.OnboardingScreen
 import com.snapzy.app.feature.picker.MediaPickerScreen
@@ -47,6 +49,17 @@ fun SnapzyApp() {
                         onCreatePhoto = { navController.navigate(Routes.MEDIA_PICKER_PHOTO) },
                         onCreateCollage = { navController.navigate(Routes.MEDIA_PICKER_COLLAGE) },
                         onGatedFeature = { comingSoonController.show(it) },
+                        onOpenDraft = { project ->
+                            // A reopened draft goes straight back into the
+                            // editor it was made in.
+                            EditorSessionStore.draftProject = project
+                            val route = if (project.kind == EditKind.VIDEO) {
+                                Routes.VIDEO_EDITOR
+                            } else {
+                                Routes.PHOTO_EDITOR
+                            }
+                            navController.navigate(route)
+                        },
                     )
                 }
                 composable(Routes.MEDIA_PICKER_VIDEO) {

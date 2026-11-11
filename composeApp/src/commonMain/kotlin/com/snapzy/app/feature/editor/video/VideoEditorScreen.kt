@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ import com.snapzy.app.core.editing.CanvasSpec
 import com.snapzy.app.core.editing.EditKind
 import com.snapzy.app.core.editing.EditProject
 import com.snapzy.app.core.editing.EditorTool
+import com.snapzy.app.core.editing.LookGrade
 import com.snapzy.app.core.editing.FilterPreset
 import com.snapzy.app.core.editing.Overlay
 import com.snapzy.app.core.editing.VIDEO_TOOLS
@@ -61,8 +63,11 @@ import com.snapzy.app.core.editing.filterBrightness
 import com.snapzy.app.core.editing.filterTint
 import com.snapzy.app.core.editing.withRecomputedDuration
 import com.snapzy.app.core.media.EditorSessionStore
+import com.snapzy.app.core.storage.DraftAutosave
+import kotlinx.coroutines.launch
 import com.snapzy.app.core.media.PickedMedia
 import com.snapzy.app.core.media.VideoPlayerSurface
+import com.snapzy.app.core.media.supportsPreviewColourGrade
 import com.snapzy.app.feature.editor.common.DRAW_COLORS
 import com.snapzy.app.feature.editor.common.OverlayLayer
 import com.snapzy.app.feature.editor.common.movedBy
@@ -108,8 +113,19 @@ private fun VideoEditorContent(
     onBack: () -> Unit,
     onExport: () -> Unit,
 ) {
-    val session = remember(sources) { VideoEditSession(initialVideoProject(sources), sources) }
+    val scope = rememberCoroutineScope()
+    val session = remember(sources) {
+        val reopened = EditorSessionStore.draftProject
+        EditorSessionStore.draftProject = null
+        VideoEditSession(reopened ?: initialVideoProject(sources), sources)
+    }
     val project = session.project
+
+    // Every change is written out as a draft, so the edit survives leaving
+    // the app and shows up again on the home screen.
+    LaunchedEffect(project) {
+        DraftAutosave.saveAfterPause(project, DraftAutosave.title(project))
+    }
 
     var activeTool by remember { mutableStateOf<EditorTool?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -180,9 +196,14 @@ private fun VideoEditorContent(
             .statusBarsPadding(),
     ) {
         VideoHeaderRow(
-            onBack = onBack,
+            onBack = {
+                // The draft is written out before leaving, so nothing is lost.
+                scope.launch { DraftAutosave.save(project, DraftAutosave.title(project)) }
+                onBack()
+            },
             onExport = {
                 EditorSessionStore.project = session.project
+                scope.launch { DraftAutosave.save(project, DraftAutosave.title(project)) }
                 onExport()
             },
             showHelp = showHelp,
@@ -192,6 +213,13 @@ private fun VideoEditorContent(
         if (showHelp) {
             HelpStrip()
         }
+
+        // The preview is graded with the same matrix the export uses.
+        val lookGrade = remember(selectedClip?.filter, selectedClip?.adjust) {
+            val clip = selectedClip
+            if (clip == null) null else LookGrade(clip.filter, clip.adjust)
+        }
+        val previewGradesItsOwnFrames = supportsPreviewColourGrade()
 
         // The canvas owns all the vertical space that is left.
         Box(
@@ -222,17 +250,21 @@ private fun VideoEditorContent(
                             if (isPlaying && playhead >= end) isPlaying = false
                         },
                         modifier = Modifier.fillMaxSize(),
+                        lookGrade = lookGrade,
                     )
                 }
 
-                // The player is a native view, so the colour grade cannot be
-                // applied to the pixels. It is approximated with a tint.
-                gradeTints(selectedClip).forEach { (color, alpha) ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(color.copy(alpha = alpha)),
-                    )
+                // Where the platform cannot colour-grade the preview itself,
+                // the grade is approximated with a tint so the user still gets
+                // feedback while they drag the sliders.
+                if (!previewGradesItsOwnFrames) {
+                    gradeTints(selectedClip).forEach { (color, alpha) ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(color.copy(alpha = alpha)),
+                        )
+                    }
                 }
 
                 DrawingLayer(
@@ -490,7 +522,11 @@ private fun DrawScope.drawDrawing(points: List<Offset>, color: Color, width: Flo
 private fun LookBadge(clip: VideoClip?, modifier: Modifier = Modifier) {
     val summary = lookSummary(clip)
     Text(
-        text = if (summary == null) "Look · none" else "Look (approx.) · $summary",
+        text = when {
+            summary == null -> "Look · none"
+            supportsPreviewColourGrade() -> "Look · $summary"
+            else -> "Look (approx.) · $summary"
+        },
         style = SnapzyType.caption,
         color = if (summary == null) SnapzyColors.textSecondary else SnapzyColors.brandPrimary,
         modifier = modifier

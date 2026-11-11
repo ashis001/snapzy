@@ -2,6 +2,7 @@ package com.snapzy.app.core.media
 
 import android.graphics.SurfaceTexture
 import android.view.TextureView
+import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +31,7 @@ actual fun VideoPlayerSurface(
     seekToMs: Long?,
     onPositionChanged: (positionMs: Long, durationMs: Long) -> Unit,
     modifier: Modifier,
+    lookGrade: com.snapzy.app.core.editing.LookGrade?,
 ) {
     val context = LocalContext.current
     val exoPlayer = remember(filePath) {
@@ -52,6 +54,18 @@ actual fun VideoPlayerSurface(
 
     LaunchedEffect(seekToMs) {
         seekToMs?.let { exoPlayer.seekTo(it) }
+    }
+
+    // The preview carries the real grade: Media3 renders the colour effects
+    // into the surface, so the user sees the same pixels the export will have.
+    LaunchedEffect(exoPlayer, lookGrade) {
+        val grade = lookGrade
+        val effects = if (grade == null) {
+            emptyList()
+        } else {
+            colorEffects(grade.filter, grade.adjust)
+        }
+        runCatching { exoPlayer.setVideoEffects(effects) }
     }
 
     LaunchedEffect(exoPlayer) {
@@ -89,6 +103,14 @@ actual fun VideoPlayerSurface(
                 }
             }
         },
+        update = { view -> view.setRenderEffect(null) },
         modifier = modifier,
     )
 }
+
+/**
+ * The preview carries a real colour grade on Android 10 and newer, where
+ * Media3 can render video effects into the playback surface.
+ */
+actual fun supportsPreviewColourGrade(): Boolean =
+    android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q

@@ -54,6 +54,7 @@ import com.snapzy.app.core.editing.Overlay
 import com.snapzy.app.core.editing.PHOTO_TOOLS
 import com.snapzy.app.core.editing.StickerItem
 import com.snapzy.app.core.media.EditorSessionStore
+import com.snapzy.app.core.storage.DraftAutosave
 import com.snapzy.app.core.media.decodeImageBitmap
 import com.snapzy.app.core.media.encodeImageBitmapToJpeg
 import com.snapzy.app.feature.editor.common.AdjustPanel
@@ -98,6 +99,12 @@ fun PhotoEditorScreen(onBack: () -> Unit, onExport: () -> Unit) {
         )
     }
     val project = controller.project
+
+    // Every change is written out as a draft, so the edit survives leaving
+    // the app and shows up again on the home screen.
+    LaunchedEffect(project) {
+        DraftAutosave.saveAfterPause(project, DraftAutosave.title(project))
+    }
     val bitmap = remember(picked) { decodeImageBitmap(picked.bytes) }
     val comingSoon = rememberComingSoonController()
     val scope = rememberCoroutineScope()

@@ -10,6 +10,18 @@ import androidx.compose.ui.graphics.ColorMatrix
  * (`VideoRender.android.kt` -> `colorEffects`), so the preview and the
  * rendered file agree instead of drifting apart.
  */
+/**
+ * The colour grade of a clip.
+ *
+ * Passed to the preview surfaces so each platform can render the grade with
+ * its own machinery — a colour matrix on Android, Core Image on iOS — rather
+ * than faking it with a translucent tint.
+ */
+data class LookGrade(
+    val filter: FilterPreset = FilterPreset.ORIGINAL,
+    val adjust: AdjustSpec = AdjustSpec(),
+)
+
 fun buildLookMatrix(filter: FilterPreset, adjust: AdjustSpec): ColorMatrix {
     var matrix = ColorMatrix()
 

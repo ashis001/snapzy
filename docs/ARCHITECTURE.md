@@ -99,16 +99,58 @@ EditProject
       ClippingConfiguration (trim)
       setRemoveAudio (mute)
       setEffects(Effects(audioProcessors, videoEffects))
-        video: ScaleAndRotateTransformation, colour effects, SpeedChangeEffect
-        audio: SonicAudioProcessor (speed), GainAudioProcessor (volume)
+        video: ScaleAndRotateTransformation, colour effects, SpeedChangeEffect,
+               OverlayEffect (text / sticker / drawing / PIP),
+               OverlayEffect (the transition fade)
+        audio: ToInt16PcmAudioProcessor, SonicAudioProcessor (speed),
+               GainAudioProcessor (volume)
   → EditedMediaItemSequence
   → Composition
-      setEffects(Effects(emptyList(), [Presentation, OverlayEffect]))
+      setEffects(Effects(emptyList(), [Presentation]))
   → Transformer → mp4 in the cache dir
 ```
 
-**iOS** — `AVMutableComposition` + `AVAssetExportSession`: trim and mute are
-applied; speed and overlays are not yet.
+**iOS** — `AVMutableComposition` + `AVAssetReader` / `AVAssetWriter` with a
+Core Image pipeline: trim, speed, mute and gain, rotation, the colour grade,
+the overlays, the transition fade and the audio bed. See `Ios*.kt` in
+`iosMain/core/media`.
+
+### Overlays hang off the clip, not the composition
+
+Media3 applies an item's own effects on the **composition's** timeline, and
+its composition-level effects are not applied consistently when a sequence
+holds more than one item. So every overlay is attached to the clips it falls
+inside and its window is expressed in composition time. The same is true of
+the transition: the outgoing clip carries a black layer that ramps up over
+its last 200 ms and the incoming one carries a black layer that ramps down
+over its first 200 ms, which puts a dip to black exactly on the boundary.
+
+Media3's overlay anchors use OpenGL's convention, where `+1` is the **top**,
+so a normalised `y` of `0.25` becomes an anchor of `1 - 2y`.
+
+### The colour grade is one piece of maths
+
+`core/media/ColorEffects.android.kt` maps a filter and an adjustment onto
+Media3's colour effects, and the **preview uses the same function** through
+`ExoPlayer.setVideoEffects`. What the user sees is what the export writes.
+
+### Music and sound effects are synthesised
+
+`core/media/AudioSynth.kt` is a small software synthesiser: every catalogue
+entry is rendered to a 16-bit PCM WAV the first time it is used, so the
+catalogue is real audio with no bundled assets. `AudioBed` mixes the music
+(looped) and the sound effects (placed at their own start times) into a single
+bed of exactly the timeline's length, which is added to the export as one
+extra audio source. Media3 needs every audio source to agree on a channel
+count, so the bed is widened to match the clips.
+
+### Picture in picture
+
+Media3 1.5 cannot composite a second *video* into an export — the video
+compositor does not run in the transformer's export path. The layer is
+therefore drawn from stills: the frames of the PIP clip are cut out ahead of
+the render (`MediaMetadataRetriever`), scaled to the size the layer occupies
+inside its own clip, and handed to Media3 one per frame.
 
 `ExportSettings` carries output width/height, frame rate and bitrate, with
 `P720` / `P1080` / `P4K` presets.
@@ -155,6 +197,28 @@ upright frame while `ffprobe` still reports the landscape coded size.
 A 6-second 640×1138 portrait source exported through the app produces a file
 that reports **1080×1920, H.264, 30 fps, 6.04 s, AAC**, and the 720p chip
 re-renders to 720×1280. Saving writes it to `Movies/Snapzy/` on the device.
+
+Measured on the exported file:
+
+| Check | Result |
+|---|---|
+| Fade transition | the frame's mean luma falls 129 → **0** across the clip boundary and back |
+| Music bed | the export's RMS doubles once a track is added |
+| Picture in picture | a rectangle of the layer's own colour bars appears at 75 % across, 25 % down |
+| Warm filter | the blue channel of the exported frame drops (a warmer image) |
+
+## Drafts
+
+`core/storage/` holds the draft store. `EditProject` is not serialised
+directly — `DraftSnapshot` is a `@Serializable` mirror made only of
+primitives (a colour becomes an ARGB long, an `Offset` becomes two floats,
+image bytes become base64), and `DraftMapper` converts in both directions.
+Enums are stored by name and fall back to their first constant if the name
+is unknown, so an old draft can never crash the app.
+
+`DraftAutosave` writes the edit out while the user works: a debounced save
+after every change, and a final save when the editor is left or exported.
+The home screen reloads its list every time it comes back into view.
 
 ## Device gallery
 

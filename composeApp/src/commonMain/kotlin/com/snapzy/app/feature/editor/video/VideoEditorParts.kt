@@ -26,6 +26,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.snapzy.app.core.comingsoon.GatedFeature
 import com.snapzy.app.core.comingsoon.rememberComingSoonController
+import kotlinx.coroutines.launch
 import com.snapzy.app.core.designsystem.SnapzyColors
 import com.snapzy.app.core.designsystem.SnapzyShapes
 import com.snapzy.app.core.designsystem.SnapzyType
@@ -468,6 +470,7 @@ internal fun VideoToolPanel(
     onDrawStrokeWidthChange: (Float) -> Unit,
 ) {
     val comingSoon = rememberComingSoonController()
+    val scope = rememberCoroutineScope()
     val project = session.project
     val clip = project.clips.getOrNull(selectedClipIndex)
     val playhead = positionMs.value
@@ -624,12 +627,12 @@ internal fun VideoToolPanel(
             AudioLibraryPanel(
                 title = "Music",
                 items = MUSIC_CATALOGUE,
-                onPick = { item -> session.addAudioTrack(item, AudioKind.MUSIC) },
+                onPick = { item -> scope.launch { session.addAudioTrack(item, AudioKind.MUSIC) } },
             )
             AudioLibraryPanel(
                 title = "Sound effects",
                 items = SFX_CATALOGUE,
-                onPick = { item -> session.addAudioTrack(item, AudioKind.SOUND_EFFECT) },
+                onPick = { item -> scope.launch { session.addAudioTrack(item, AudioKind.SOUND_EFFECT) } },
             )
             if (project.audioTracks.isNotEmpty()) {
                 ToolPanel(title = "Tracks") {

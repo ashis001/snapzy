@@ -31,6 +31,17 @@ object EditorSessionStore {
     var exportedImageBytes: ByteArray? = null
     var exportedVideoPath: String? = null
 
+    /**
+     * A saved draft that was reopened from the home screen.
+     *
+     * The editors build their project from this instead of from the picked
+     * media, so an edit survives leaving the app.
+     */
+    var draftProject: EditProject? = null
+
+    /** The id of the draft this editing session writes to. */
+    var draftId: String? = null
+
     fun clear() {
         pickedImage = null
         pickedVideo = null
